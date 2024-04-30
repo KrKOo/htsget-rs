@@ -11,6 +11,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use futures::StreamExt;
 use futures_util::stream::FuturesOrdered;
+use http::header::HOST;
 use noodles::bgzf::{gzi, VirtualPosition};
 use noodles::csi::binning_index::index::reference_sequence::bin::Chunk;
 use noodles::csi::binning_index::index::Index;
@@ -320,12 +321,14 @@ where
           trace!(range = ?range, "range");
           let storage = self.get_storage();
           let query_owned = query.clone();
+          let mut response_headers = query.request().headers().clone();
+          response_headers.remove(HOST);
 
           storage_futures.push_back(tokio::spawn(async move {
             storage
               .range_url(
                 query_owned.format().fmt_file(query_owned.id()),
-                RangeUrlOptions::new(range, query_owned.request().headers()),
+                RangeUrlOptions::new(range, &response_headers),
               )
               .await
           }));
